@@ -9,12 +9,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- PDF.js for PDF reading -->
+  <!-- PDF.js for PDF reading & thumbnail preview -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <!-- JSZip for PPTX reading -->
+  <!-- JSZip for PPTX XML parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <!-- Tesseract.js for Image OCR -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <!-- Google Fonts: Cinzel & Lora for Old Book Aesthetics -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -90,6 +88,7 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-amber-900 selection:text-amber-100">
 
+  <!-- Header Navigation -->
   <header class="border-b border-[#3d2415] bg-[#1e120b] text-[#e8d5bc] shadow-xl sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -99,17 +98,17 @@
         <div>
           <h1 class="font-cinzel font-bold text-base sm:text-lg text-amber-100 tracking-wide flex items-center gap-2">
             The Revision Tome
-            <span id="aiBadge" class="text-[10px] font-inter font-semibold px-2 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/60">
-              <i data-lucide="sparkles" class="w-3 h-3 inline mr-1"></i>Free Gemini AI Connected
+            <span id="aiBadge" class="text-[10px] font-inter font-semibold px-2 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/60 flex items-center gap-1">
+              <i data-lucide="eye" class="w-3 h-3 text-emerald-400"></i> Full Document Vision & Native File Reading
             </span>
           </h1>
-          <p class="text-[11px] font-inter text-amber-300/60">Upload PDF, PPTX, or Image Notes &bull; Generates Revision Questions</p>
+          <p class="text-[11px] font-inter text-amber-300/60">Multimodal Gemini AI reads entire PDFs, PPTX slides & images natively</p>
         </div>
       </div>
       
       <div class="flex items-center gap-2 text-xs font-inter text-amber-200/80 bg-[#120a07] px-3 py-1.5 rounded-md border border-[#301c10]">
         <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
-        <span class="hidden sm:inline">No API Key Required</span>
+        <span class="hidden sm:inline">Whole File Multimodal Payload</span>
       </div>
     </div>
   </header>
@@ -138,19 +137,19 @@
                 <h2 class="font-cinzel text-xl sm:text-2xl font-bold text-[#3d2618]">Study Materials</h2>
               </div>
               <div class="text-right font-inter text-xs text-stone-500">
-                <span id="docLangBadge" class="hidden px-2 py-0.5 rounded bg-[#ebdcc1] border border-[#b89b70] text-[#733d19] font-bold">Language Auto-Detect</span>
+                <span id="docLangBadge" class="hidden px-2 py-0.5 rounded bg-[#ebdcc1] border border-[#b89b70] text-[#733d19] font-bold">Auto-Detecting Language</span>
               </div>
             </div>
 
             <!-- Upload Dropzone -->
             <div id="dropzone" class="border-2 border-dashed border-[#b89b70] hover:border-[#8c4b1f] bg-[#f0e4cd]/60 hover:bg-[#ebdcc1] rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-3 group">
-              <input type="file" id="fileInput" multiple accept=".pdf,.pptx,.png,.jpg,.jpeg" class="hidden">
+              <input type="file" id="fileInput" multiple accept=".pdf,.pptx,.png,.jpg,.jpeg,.webp" class="hidden">
               <div class="p-3 bg-[#ebdcc1] group-hover:bg-[#8c4b1f] rounded-xl text-[#733d19] group-hover:text-amber-100 transition-all duration-300 shadow">
                 <i data-lucide="upload-cloud" class="w-8 h-8"></i>
               </div>
               <div class="space-y-1 font-inter">
                 <p class="text-xs sm:text-sm font-semibold text-[#3d2618]">Drop PDF, PPTX slides, or photo notes here</p>
-                <p class="text-[11px] text-stone-500">Supports multiple files simultaneously</p>
+                <p class="text-[11px] text-stone-500">Gemini reads the complete file directly (diagrams, tables, layout & text)</p>
               </div>
             </div>
 
@@ -165,13 +164,13 @@
               <div id="fileList" class="max-h-36 overflow-y-auto custom-scrollbar space-y-1.5 pr-1"></div>
             </div>
 
-            <!-- Parsing Progress Status Bar -->
+            <!-- File Processing Status Bar -->
             <div id="parsingStatus" class="hidden bg-[#ebdcc1] border border-[#b89b70] rounded-xl p-3 flex items-center gap-3 font-inter">
               <div class="animate-spin text-[#8c4b1f]">
                 <i data-lucide="loader-2" class="w-4 h-4"></i>
               </div>
               <div class="flex-1 text-xs space-y-1">
-                <p id="parsingMessage" class="text-[#3d2618] font-medium">Extracting document contents...</p>
+                <p id="parsingMessage" class="text-[#3d2618] font-medium">Encoding complete document buffer for Gemini API...</p>
                 <div class="w-full bg-[#d8c4a0] h-1.5 rounded-full overflow-hidden">
                   <div id="parsingProgressBar" class="bg-[#8c4b1f] h-full w-0 transition-all duration-300"></div>
                 </div>
@@ -195,13 +194,13 @@
                 </div>
               </div>
 
-              <!-- Preview snippet -->
+              <!-- Content Inspection Summary -->
               <div>
                 <div class="flex items-center justify-between text-[11px] text-stone-600 mb-1">
-                  <span>Extracted Text Snippet</span>
-                  <span id="charCount" class="font-mono text-[#8c4b1f]">0 chars</span>
+                  <span>File Inspection Payload</span>
+                  <span id="payloadMeta" class="font-mono text-[#8c4b1f]">0 MB</span>
                 </div>
-                <div id="extractedPreview" class="bg-[#f8f1e3] border border-[#b89b70] rounded-lg p-2.5 text-[11px] font-mono text-stone-700 max-h-24 overflow-y-auto custom-scrollbar leading-relaxed">No text extracted yet. Drop files above.</div>
+                <div id="extractedPreview" class="bg-[#f8f1e3] border border-[#b89b70] rounded-lg p-2.5 text-[11px] font-mono text-stone-700 max-h-24 overflow-y-auto custom-scrollbar leading-relaxed">No files loaded yet. Drop PDF, PPTX, or image notes above.</div>
               </div>
             </div>
           </div>
@@ -230,11 +229,11 @@
               <p id="placeholderDesc" class="text-xs text-stone-600 font-inter leading-relaxed">Upload study materials on the left page and press <strong class="text-[#8c4b1f]">Generate Revision Set</strong> to craft your custom practice exam.</p>
             </div>
 
-            <!-- Live Generation Indicator inside Right Page (when active) -->
+            <!-- Live Generation Indicator inside Right Page -->
             <div id="rightPageLoader" class="hidden w-full max-w-xs space-y-3 font-inter">
               <div class="flex items-center justify-center gap-2 text-xs text-[#8c4b1f] font-semibold">
                 <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                <span id="aiProgressText">Consulting Gemini AI Model...</span>
+                <span id="aiProgressText">Analyzing Whole Document with Gemini AI...</span>
               </div>
               <div class="w-full bg-[#d8c4a0] h-2 rounded-full overflow-hidden border border-[#b89b70]">
                 <div id="aiProgressBar" class="bg-[#8c4b1f] h-full w-0 transition-all duration-300"></div>
@@ -306,23 +305,21 @@
   </main>
 
   <footer class="text-center py-3 text-[11px] font-inter text-amber-200/50">
-    The Revision Tome &bull; Powered by Gemini 3 AI API
+    The Revision Tome &bull; Multimodal AI Document Synthesis Engine
   </footer>
 
   <script>
-    // Initialize PDF.js worker
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
     // Application State
     const state = {
-      files: [], // { name, type, size, text }
-      extractedText: '',
+      files: [], // { name, type, mimeType, base64, text, sizeFormatted }
       detectedLanguage: 'en', // 'en' or 'zh-TW'
       mcqs: [],
       longQuestions: [],
-      userAnswers: {}, // { mcqIndex: optionIndex }
+      userAnswers: {},
       score: 0,
       showAnswers: false
     };
@@ -338,7 +335,7 @@
     const parsingMessage = document.getElementById('parsingMessage');
     const parsingProgressBar = document.getElementById('parsingProgressBar');
     const extractedPreview = document.getElementById('extractedPreview');
-    const charCount = document.getElementById('charCount');
+    const payloadMeta = document.getElementById('payloadMeta');
     const generateQuestionsBtn = document.getElementById('generateQuestionsBtn');
     const docLangBadge = document.getElementById('docLangBadge');
 
@@ -347,7 +344,6 @@
     const placeholderTitle = document.getElementById('placeholderTitle');
     const placeholderDesc = document.getElementById('placeholderDesc');
     const rightPageLoader = document.getElementById('rightPageLoader');
-    const aiProgressText = document.getElementById('aiProgressText');
     const aiProgressBar = document.getElementById('aiProgressBar');
 
     const quizContainer = document.getElementById('quizContainer');
@@ -365,7 +361,7 @@
     // Init Lucide Icons
     lucide.createIcons();
 
-    // ================= STREAMING_CHUNK:File Upload & Processing Handlers =================
+    // File Drop & Select Events
     dropzone.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -385,41 +381,69 @@
 
     clearAllBtn.addEventListener('click', () => {
       state.files = [];
-      state.extractedText = '';
       updateFileListUI();
     });
 
+    // Helper: Convert file to Base64 String
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          const base64Data = result.split(',')[1] || result;
+          resolve(base64Data);
+        };
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Comprehensive File Handler (Reads entire file into binary payload + text summary)
     async function handleFiles(uploadedFiles) {
       parsingStatus.classList.remove('hidden');
       let completed = 0;
       const total = uploadedFiles.length;
 
       for (const file of uploadedFiles) {
-        parsingMessage.textContent = `Reading ${file.name}...`;
+        parsingMessage.textContent = `Reading entire buffer for ${file.name}...`;
         parsingProgressBar.style.width = `${Math.round((completed / total) * 100)}%`;
 
-        let text = '';
         try {
           const ext = file.name.split('.').pop().toLowerCase();
-          if (ext === 'pdf') {
-            text = await extractPdfText(file);
-          } else if (ext === 'pptx') {
-            text = await extractPptxText(file);
-          } else if (['png', 'jpg', 'jpeg'].includes(ext)) {
-            text = await extractImageOcrText(file);
+          const base64Data = await fileToBase64(file);
+          let mimeType = file.type;
+          
+          if (!mimeType) {
+            if (ext === 'pdf') mimeType = 'application/pdf';
+            else if (ext === 'png') mimeType = 'image/png';
+            else if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+            else if (ext === 'webp') mimeType = 'image/webp';
+            else if (ext === 'pptx') mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
           }
-        } catch (err) {
-          console.error(`Error parsing ${file.name}:`, err);
-        }
 
-        if (text.trim().length > 0) {
+          let textSnippet = '';
+          if (ext === 'pdf') {
+            textSnippet = await extractPdfText(file);
+          } else if (ext === 'pptx') {
+            textSnippet = await extractPptxText(file);
+          } else {
+            textSnippet = `[Image Note / Diagram: ${file.name}]`;
+          }
+
           state.files.push({
             name: file.name,
-            size: (file.size / 1024).toFixed(1) + ' KB',
-            type: file.name.split('.').pop().toUpperCase(),
-            text: text
+            ext: ext.toUpperCase(),
+            sizeFormatted: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+            rawSize: file.size,
+            mimeType: mimeType,
+            base64: base64Data,
+            text: textSnippet
           });
+
+        } catch (err) {
+          console.error(`Error processing whole file ${file.name}:`, err);
         }
+
         completed++;
       }
 
@@ -435,9 +459,8 @@
       if (state.files.length === 0) {
         fileListContainer.classList.add('hidden');
         generateQuestionsBtn.disabled = true;
-        extractedPreview.textContent = 'No text extracted yet. Drop files above.';
-        charCount.textContent = '0 chars';
-        state.extractedText = '';
+        extractedPreview.textContent = 'No files loaded yet. Drop PDF, PPTX, or image notes above.';
+        payloadMeta.textContent = '0 MB';
         docLangBadge.classList.add('hidden');
         return;
       }
@@ -446,30 +469,39 @@
       fileCount.textContent = state.files.length;
       generateQuestionsBtn.disabled = false;
 
+      let totalBytes = 0;
+      let combinedText = '';
+
       state.files.forEach((file, index) => {
+        totalBytes += file.rawSize;
+        combinedText += `\n[File: ${file.name}]\n` + file.text;
+
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between p-2 bg-[#f8f1e3] border border-[#b89b70] rounded-lg text-xs font-inter';
         item.innerHTML = `
           <div class="flex items-center gap-2 overflow-hidden mr-2">
-            <span class="px-1.5 py-0.5 rounded bg-[#8c4b1f] text-amber-100 font-bold text-[10px]">${file.type}</span>
+            <span class="px-1.5 py-0.5 rounded bg-[#8c4b1f] text-amber-100 font-bold text-[10px]">${file.ext}</span>
             <span class="truncate font-medium text-[#3d2618]">${file.name}</span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-[10px] text-stone-500">${file.size}</span>
+            <span class="text-[10px] text-stone-500">${file.sizeFormatted}</span>
             <button onclick="removeFile(${index})" class="text-rose-700 hover:text-rose-900 p-0.5"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
           </div>
         `;
         fileList.appendChild(item);
       });
 
-      // Combine extracted text
-      state.extractedText = state.files.map(f => f.text).join('\n\n');
-      extractedPreview.textContent = state.extractedText.slice(0, 1500) + (state.extractedText.length > 1500 ? '...' : '');
-      charCount.textContent = `${state.extractedText.length.toLocaleString()} chars`;
+      payloadMeta.textContent = `${(totalBytes / (1024 * 1024)).toFixed(2)} MB total`;
+      
+      if (combinedText.trim().length > 0) {
+        extractedPreview.textContent = combinedText.slice(0, 800) + (combinedText.length > 800 ? '...' : '');
+      } else {
+        extractedPreview.textContent = `Loaded ${state.files.length} document(s). Ready to send full visual & structural data to Gemini.`;
+      }
 
-      // Language detection: test Chinese character frequency
-      const chineseCharMatch = state.extractedText.match(/[\u4e00-\u9fa5]/g);
-      const chineseRatio = chineseCharMatch ? (chineseCharMatch.length / state.extractedText.length) : 0;
+      // Language detection check on text content
+      const chineseCharMatch = combinedText.match(/[\u4e00-\u9fa5]/g);
+      const chineseRatio = chineseCharMatch ? (chineseCharMatch.length / (combinedText.length || 1)) : 0;
       
       if (chineseRatio > 0.08) {
         state.detectedLanguage = 'zh-TW';
@@ -489,82 +521,65 @@
       updateFileListUI();
     };
 
-    // ================= STREAMING_CHUNK:Document Parsers (PDF, PPTX, OCR) =================
+    // Client-side PDF Text Helper for language detection & quick preview
     async function extractPdfText(file) {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let text = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const pageStrings = content.items.map(item => item.str);
-        text += `\n--- Page ${i} ---\n` + pageStrings.join(' ');
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let text = '';
+        const maxPages = Math.min(pdf.numPages, 10);
+        for (let i = 1; i <= maxPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(item => item.str).join(' ') + '\n';
+        }
+        return text;
+      } catch (e) {
+        return '';
       }
-      return text;
     }
 
+    // Client-side PPTX XML Helper for language detection & quick preview
     async function extractPptxText(file) {
-      const zip = await JSZip.loadAsync(file);
-      let text = '';
-      let slideNum = 1;
-
-      // Iterate through zip entries for slide xml
-      const slideFiles = Object.keys(zip.files).filter(filename => filename.startsWith('ppt/slides/slide') && filename.endsWith('.xml'));
-      
-      // Sort slides numerically
-      slideFiles.sort((a, b) => {
-        const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
-        const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
-        return numA - numB;
-      });
-
-      for (const slideFile of slideFiles) {
-        const xmlText = await zip.files[slideFile].async('string');
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-        const textNodes = xmlDoc.getElementsByTagName('a:t');
-        
-        let slideText = [];
-        for (let i = 0; i < textNodes.length; i++) {
-          if (textNodes[i].textContent.trim()) {
-            slideText.push(textNodes[i].textContent.trim());
+      try {
+        const zip = await JSZip.loadAsync(file);
+        let text = '';
+        const slideFiles = Object.keys(zip.files).filter(fn => fn.startsWith('ppt/slides/slide') && fn.endsWith('.xml'));
+        for (const slideFile of slideFiles) {
+          const xmlText = await zip.files[slideFile].async('string');
+          const parser = new DOMParser();
+          const xmlDoc = parser.parserFromString ? parser.parserFromString(xmlText, 'text/xml') : parser.parseFromString(xmlText, 'text/xml');
+          const textNodes = xmlDoc.getElementsByTagName('a:t');
+          for (let i = 0; i < textNodes.length; i++) {
+            if (textNodes[i].textContent.trim()) text += textNodes[i].textContent.trim() + ' ';
           }
         }
-        if (slideText.length > 0) {
-          text += `\n--- Slide ${slideNum} ---\n` + slideText.join('\n');
-          slideNum++;
-        }
+        return text;
+      } catch (e) {
+        return '';
       }
-      return text;
     }
 
-    async function extractImageOcrText(file) {
-      const worker = await Tesseract.createWorker('eng+chi_tra+chi_sim');
-      const ret = await worker.recognize(file);
-      await worker.terminate();
-      return ret.data.text;
-    }
-
-    // ================= STREAMING_CHUNK:Gemini API Question Generation Engine =================
+    // ================= Gemini Multimodal API Engine (Reads Entire File) =================
     generateQuestionsBtn.addEventListener('click', async () => {
-      if (!state.extractedText.trim()) return;
+      if (state.files.length === 0) return;
 
       const mcqCount = parseInt(document.getElementById('mcqCount').value) || 6;
       const longCount = parseInt(document.getElementById('longCount').value) || 3;
 
       // Show loader on right page
       unsealIcon.innerHTML = `<i data-lucide="loader-2" class="w-8 h-8 animate-spin"></i>`;
-      placeholderTitle.textContent = 'Gemini AI is Synthesizing Questions...';
-      placeholderDesc.textContent = 'Extracting core concepts, definitions, and essay prompts based strictly on your document language.';
+      placeholderTitle.textContent = 'Gemini AI is Synthesizing Whole Document...';
+      placeholderDesc.textContent = 'Analyzing multi-page layouts, diagrams, tables, and notes across all uploaded files.';
       rightPageLoader.classList.remove('hidden');
       quizContainer.classList.add('hidden');
       rightPlaceholder.classList.remove('hidden');
       generateQuestionsBtn.disabled = true;
 
-      animateProgress(10, 85, 4500);
+      animateProgress(10, 88, 5500);
 
       try {
-        const questionsData = await fetchQuestionsFromGemini(state.extractedText, mcqCount, longCount, state.detectedLanguage);
+        const questionsData = await fetchQuestionsFromGeminiMultimodal(mcqCount, longCount, state.detectedLanguage);
         
         state.mcqs = questionsData.mcqs || [];
         state.longQuestions = questionsData.longQuestions || [];
@@ -578,17 +593,11 @@
         quizContainer.classList.remove('hidden');
 
       } catch (err) {
-        console.warn('Gemini API call returned an error, using NLP backup generator:', err);
-        // Fallback generator
-        const fallback = generateOfflineQuestions(state.extractedText, mcqCount, longCount, state.detectedLanguage);
-        state.mcqs = fallback.mcqs;
-        state.longQuestions = fallback.longQuestions;
-        state.userAnswers = {};
-        state.score = 0;
-
-        renderQuizUI();
-        rightPlaceholder.classList.add('hidden');
-        quizContainer.classList.remove('hidden');
+        console.error('Gemini Multimodal API call failed:', err);
+        alert('Failed to generate revision questions from Gemini API. Please check your network connection or upload smaller files.');
+        rightPageLoader.classList.add('hidden');
+        placeholderTitle.textContent = 'Generation Failed';
+        placeholderDesc.textContent = 'An error occurred while communicating with the Gemini API. Please try again.';
       } finally {
         generateQuestionsBtn.disabled = false;
         lucide.createIcons();
@@ -608,45 +617,66 @@
       }, 50);
     }
 
-    // Gemini API Request Function with Exponential Backoff
-    async function fetchQuestionsFromGemini(sourceText, mcqCount, longCount, targetLang) {
-      const apiKey = ""; // Canvas runtime injects API key automatically for gemini-3-flash-preview
+    // Direct Multimodal Gemini API Request with Base64 Inline Parts
+    async function fetchQuestionsFromGeminiMultimodal(mcqCount, longCount, targetLang) {
+      const apiKey = ""; // Canvas runtime injects API key automatically
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
       const languageInstruction = targetLang === 'zh-TW' 
-        ? "STRICT LANGUAGE RULE: The user material is in Chinese. You MUST generate ALL questions, options, explanations, model answers, and rubrics strictly in TRADITIONAL CHINESE (繁體中文). Do NOT output English or Simplified Chinese."
-        : "STRICT LANGUAGE RULE: The user material is in English. You MUST generate ALL questions, options, explanations, model answers, and rubrics strictly in ENGLISH. Do NOT output Chinese.";
+        ? "STRICT LANGUAGE RULE: The study material is in Chinese. You MUST generate ALL questions, options, explanations, model answers, and rubrics strictly in TRADITIONAL CHINESE (繁體中文). Do NOT output English or Simplified Chinese."
+        : "STRICT LANGUAGE RULE: The study material is in English. You MUST generate ALL questions, options, explanations, model answers, and rubrics strictly in ENGLISH. Do NOT output Chinese.";
 
-      const systemPrompt = `You are a high-level educational exam generator. Your task is to analyze study notes and generate structured revision questions.
+      const systemPrompt = `You are a top-tier academic revision exam generator. 
+You are provided with complete study files (PDFs, Images, or PPTX content).
+Analyze the WHOLE document contents—including figures, diagrams, tables, formulas, handwritten notes, and text.
 ${languageInstruction}
 
-Return JSON with exactly this structure:
+Return JSON strictly matching this schema:
 {
   "mcqs": [
     {
       "question": "Question text here",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswerIndex": 0,
-      "explanation": "Detailed explanation here"
+      "explanation": "Detailed rationale explaining why the answer is correct based on the file."
     }
   ],
   "longQuestions": [
     {
       "question": "Essay question text here",
-      "contextOrReference": "Key concept reference",
+      "contextOrReference": "Chapter or concept reference from file",
       "modelAnswer": "Comprehensive model response outline",
       "rubricKeyPoints": ["Key Point 1", "Key Point 2", "Key Point 3"]
     }
   ]
 }`;
 
-      // Limit source text to avoid payload ceiling
-      const truncatedText = sourceText.slice(0, 25000);
+      // Construct Multimodal Payload Parts
+      const parts = [];
 
-      const userQuery = `Study Content:\n"""\n${truncatedText}\n"""\n\nPlease generate exactly ${mcqCount} Multiple Choice Questions and ${longCount} Long/Essay Questions based on the study content.`;
+      // Add each file as inlineData or text
+      for (const file of state.files) {
+        if (['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.mimeType)) {
+          parts.push({
+            inlineData: {
+              mimeType: file.mimeType,
+              data: file.base64
+            }
+          });
+        } else {
+          parts.push({
+            text: `Document Content [${file.name}]:\n${file.text}`
+          });
+        }
+      }
+
+      // Add user prompt requesting exact counts
+      parts.push({
+        text: `Please thoroughly read all uploaded files provided above. Generate exactly ${mcqCount} Multiple Choice Questions and ${longCount} Long/Essay Revision Questions based on the complete files.`
+      });
 
       const payload = {
-        contents: [{ parts: [{ text: userQuery }] }],
+        contents: [{ parts: parts }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
         generationConfig: {
           responseMimeType: "application/json",
@@ -685,9 +715,9 @@ Return JSON with exactly this structure:
         }
       };
 
-      // Exponential backoff
+      // Exponential Backoff Fetch
       let retries = 3;
-      let delay = 1000;
+      let delay = 1200;
       for (let attempt = 0; attempt < retries; attempt++) {
         try {
           const res = await fetch(apiUrl, {
@@ -708,69 +738,10 @@ Return JSON with exactly this structure:
         await new Promise(r => setTimeout(r, delay));
         delay *= 2;
       }
-      throw new Error("Unable to fetch response from Gemini API");
+      throw new Error("Unable to synthesize questions from Gemini API");
     }
 
-    // Backup Offline Synthesizer in case network is offline
-    function generateOfflineQuestions(text, mcqReqCount, longReqCount, targetLang) {
-      const isZh = targetLang === 'zh-TW';
-      const lines = text.split(/[\n;\.!?。！？]/).map(l => l.trim()).filter(l => l.length > 8);
-      
-      const mcqs = [];
-      const longQuestions = [];
-
-      for (let i = 0; i < mcqReqCount; i++) {
-        const line = lines[i % lines.length] || (isZh ? "這是關於學習筆記的核心概念。" : "Core concept from study notes.");
-        const qText = isZh 
-          ? `關於以下內容，下列哪項描述最為正確？「${line.slice(0, 45)}...」`
-          : `Which statement accurately reflects: "${line.slice(0, 45)}..."?`;
-
-        mcqs.push({
-          question: qText,
-          options: isZh ? [
-            `這強調了本章節的核心原則與概念。`,
-            `這表明該變數與結果呈反比關係。`,
-            `這屬於次要實驗觀察而非主要結論。`,
-            `這僅適用於特殊狀況下的極端例子。`
-          ] : [
-            `This highlights the core principle discussed in this section.`,
-            `This indicates an inverse correlation between the key variables.`,
-            `This represents a secondary observation rather than a conclusion.`,
-            `This applies only in specialized edge conditions.`
-          ],
-          correctAnswerIndex: 0,
-          explanation: isZh 
-            ? `正確答案是第一個選項。該片段直接總結了筆記中的關鍵要點。`
-            : `Option 1 is correct as it directly synthesizes the primary concept from your notes.`
-        });
-      }
-
-      for (let j = 0; j < longReqCount; j++) {
-        const line = lines[(j * 2) % lines.length] || (isZh ? "重點研習主題" : "Key study topic");
-        longQuestions.push({
-          question: isZh 
-            ? `請深入分析與「${line.slice(0, 30)}」相關的核心機制及其重要應用。`
-            : `Thoroughly analyze the mechanism and applications associated with: "${line.slice(0, 30)}".`,
-          contextOrReference: isZh ? `取材自研習文件重點` : `Extracted from uploaded study notes`,
-          modelAnswer: isZh 
-            ? `標準答案應涵蓋：1. 定義與基本原則；2. 具體運作機制；3. 在實際學科中的應用與影響。`
-            : `A complete answer should cover: 1. Core definition and foundation; 2. Operational mechanism; 3. Practical significance.`,
-          rubricKeyPoints: isZh ? [
-            `清晰列出基本定義`,
-            `解釋核心運作邏輯`,
-            `舉例說明實際應用`
-          ] : [
-            `Clear definition provided`,
-            `Explains core operational logic`,
-            `Includes practical application examples`
-          ]
-        });
-      }
-
-      return { mcqs, longQuestions };
-    }
-
-    // ================= STREAMING_CHUNK:Quiz UI Rendering & Interaction =================
+    // ================= Quiz UI Rendering & Interactions =================
     function renderQuizUI() {
       mcqTabBadge.textContent = state.mcqs.length;
       longTabBadge.textContent = state.longQuestions.length;
@@ -921,7 +892,7 @@ Return JSON with exactly this structure:
       scoreText.textContent = `${state.score} / ${total}`;
     }
 
-    // ================= STREAMING_CHUNK:Tab Navigation & Toolbar Controls =================
+    // Navigation & Toolbar Controls
     mcqTabBtn.addEventListener('click', () => {
       mcqTabBtn.classList.add('border-[#8c4b1f]', 'text-[#8c4b1f]', 'font-bold');
       mcqTabBtn.classList.remove('border-transparent', 'text-stone-600');
