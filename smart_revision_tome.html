@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Revision Tome - AI Study Generator</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- PDF.js for PDF reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- JSZip for PPTX reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Tesseract.js for Image OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <!-- Google Fonts: Cinzel & Lora for Old Book Aesthetics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background-color: #160e0a;
+      background-image: radial-gradient(#2a1b13 1px, transparent 1px), radial-gradient(#2a1b13 1px, #120a07 1px);
+      background-size: 36px 36px;
+      background-position: 0 0, 18px 18px;
+      color: #2c221e;
+    }
+    
+    .font-cinzel { font-family: 'Cinzel', serif; }
+    .font-inter { font-family: 'Inter', sans-serif; }
+
+    /* Custom Parchment Scrollbars */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #e3d2b5; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #a68962; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #856a45; }
+
+    /* Book Container Shell */
+    .book-outer {
+      background: #2b180d;
+      box-shadow: 0 35px 70px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      border: 3px solid #4a2d1a;
+    }
+
+    .book-page {
+      background-color: #f7eedb;
+      background-image: radial-gradient(#e1d0b2 0.6px, transparent 0.6px);
+      background-size: 20px 20px;
+      box-shadow: inset 0 0 35px rgba(100, 65, 30, 0.12);
+    }
+
+    .book-spine {
+      background: linear-gradient(to right, 
+        rgba(50, 30, 15, 0.25) 0%, 
+        rgba(50, 30, 15, 0.05) 20%, 
+        rgba(0, 0, 0, 0) 50%, 
+        rgba(50, 30, 15, 0.05) 80%, 
+        rgba(50, 30, 15, 0.25) 100%
+      );
+    }
+
+    .card-parchment {
+      background-color: #ebdcc1;
+      border: 1px solid #d4be9a;
+      box-shadow: 0 2px 6px rgba(60, 35, 15, 0.05);
+    }
+
+    .card-parchment:hover {
+      border-color: #b89b70;
+    }
+
+    .wax-seal-bg {
+      background: radial-gradient(circle, #8c1d1d 0%, #590f0f 100%);
+      box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.2), 0 4px 10px rgba(0, 0, 0, 0.4);
+    }
+
+    @media print {
+      header, .no-print { display: none !important; }
+      body { background: white !important; color: black !important; }
+      .book-outer { box-shadow: none !important; border: none !important; background: white !important; }
+      .book-page { background: white !important; box-shadow: none !important; padding: 0 !important; }
+      .print-card { border: 1px solid #ccc !important; background: white !important; color: black !important; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-amber-900 selection:text-amber-100">
+
+  <header class="border-b border-[#3d2415] bg-[#1e120b] text-[#e8d5bc] shadow-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-[#472a18] border border-[#6d4125] rounded-lg shadow">
+          <i data-lucide="book-open" class="w-5 h-5 text-amber-200"></i>
+        </div>
+        <div>
+          <h1 class="font-cinzel font-bold text-base sm:text-lg text-amber-100 tracking-wide flex items-center gap-2">
+            The Revision Tome
+            <span id="aiBadge" class="text-[10px] font-inter font-semibold px-2 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/60">
+              <i data-lucide="sparkles" class="w-3 h-3 inline mr-1"></i>Free Gemini AI Connected
+            </span>
+          </h1>
+          <p class="text-[11px] font-inter text-amber-300/60">Upload PDF, PPTX, or Image Notes &bull; Generates Revision Questions</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2 text-xs font-inter text-amber-200/80 bg-[#120a07] px-3 py-1.5 rounded-md border border-[#301c10]">
+        <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+        <span class="hidden sm:inline">No API Key Required</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 lg:p-6 my-2 flex flex-col justify-center">
+
+    <div class="book-outer rounded-3xl p-2 sm:p-4 relative flex-1 flex flex-col min-h-[720px]">
+      
+      <!-- Decorative Book Spine Ribbon -->
+      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-24 bg-[#7a1b1b] shadow-lg rounded-b-md z-30 pointer-events-none hidden lg:block border-x border-red-950"></div>
+
+      <!-- Two-Page Open Book Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 relative">
+        
+        <!-- Book Spine Overlay Shadow -->
+        <div class="book-spine absolute inset-y-0 left-1/2 -translate-x-1/2 w-16 pointer-events-none hidden lg:block z-20"></div>
+
+        <!-- ================= LEFT PAGE: UPLOAD & CONFIGURATION ================= -->
+        <div class="book-page rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden border border-[#dfcaaa]">
+          
+          <div class="space-y-5">
+            <!-- Left Header -->
+            <div class="border-b border-[#d8c4a0] pb-3 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] uppercase tracking-widest font-bold text-[#8c4b1f] font-inter">Left Page &bull; Source Documents</span>
+                <h2 class="font-cinzel text-xl sm:text-2xl font-bold text-[#3d2618]">Study Materials</h2>
+              </div>
+              <div class="text-right font-inter text-xs text-stone-500">
+                <span id="docLangBadge" class="hidden px-2 py-0.5 rounded bg-[#ebdcc1] border border-[#b89b70] text-[#733d19] font-bold">Language Auto-Detect</span>
+              </div>
+            </div>
+
+            <!-- Upload Dropzone -->
+            <div id="dropzone" class="border-2 border-dashed border-[#b89b70] hover:border-[#8c4b1f] bg-[#f0e4cd]/60 hover:bg-[#ebdcc1] rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-3 group">
+              <input type="file" id="fileInput" multiple accept=".pdf,.pptx,.png,.jpg,.jpeg" class="hidden">
+              <div class="p-3 bg-[#ebdcc1] group-hover:bg-[#8c4b1f] rounded-xl text-[#733d19] group-hover:text-amber-100 transition-all duration-300 shadow">
+                <i data-lucide="upload-cloud" class="w-8 h-8"></i>
+              </div>
+              <div class="space-y-1 font-inter">
+                <p class="text-xs sm:text-sm font-semibold text-[#3d2618]">Drop PDF, PPTX slides, or photo notes here</p>
+                <p class="text-[11px] text-stone-500">Supports multiple files simultaneously</p>
+              </div>
+            </div>
+
+            <!-- Uploaded File List -->
+            <div id="fileListContainer" class="hidden space-y-2 font-inter">
+              <div class="flex items-center justify-between px-1">
+                <h3 class="text-xs font-bold text-[#3d2618] uppercase tracking-wider flex items-center gap-1.5">
+                  <i data-lucide="files" class="w-3.5 h-3.5 text-[#8c4b1f]"></i> Loaded Files (<span id="fileCount">0</span>)
+                </h3>
+                <button id="clearAllBtn" class="text-xs text-rose-700 hover:text-rose-900 hover:underline transition">Clear All</button>
+              </div>
+              <div id="fileList" class="max-h-36 overflow-y-auto custom-scrollbar space-y-1.5 pr-1"></div>
+            </div>
+
+            <!-- Parsing Progress Status Bar -->
+            <div id="parsingStatus" class="hidden bg-[#ebdcc1] border border-[#b89b70] rounded-xl p-3 flex items-center gap-3 font-inter">
+              <div class="animate-spin text-[#8c4b1f]">
+                <i data-lucide="loader-2" class="w-4 h-4"></i>
+              </div>
+              <div class="flex-1 text-xs space-y-1">
+                <p id="parsingMessage" class="text-[#3d2618] font-medium">Extracting document contents...</p>
+                <div class="w-full bg-[#d8c4a0] h-1.5 rounded-full overflow-hidden">
+                  <div id="parsingProgressBar" class="bg-[#8c4b1f] h-full w-0 transition-all duration-300"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Question Configuration Inputs -->
+            <div class="card-parchment rounded-xl p-4 space-y-3 font-inter">
+              <h3 class="text-xs font-bold text-[#3d2618] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#d8c4a0] pb-1.5">
+                <i data-lucide="sliders" class="w-3.5 h-3.5 text-[#8c4b1f]"></i> Target Question Counts
+              </h3>
+              
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[11px] font-semibold text-[#3d2618] block mb-1">MC Questions</label>
+                  <input type="number" id="mcqCount" min="1" max="25" value="6" class="w-full bg-[#f8f1e3] border border-[#b89b70] rounded-lg px-3 py-1.5 text-xs text-[#3d2618] focus:outline-none focus:border-[#8c4b1f]">
+                </div>
+                <div>
+                  <label class="text-[11px] font-semibold text-[#3d2618] block mb-1">Long / Essay Questions</label>
+                  <input type="number" id="longCount" min="1" max="10" value="3" class="w-full bg-[#f8f1e3] border border-[#b89b70] rounded-lg px-3 py-1.5 text-xs text-[#3d2618] focus:outline-none focus:border-[#8c4b1f]">
+                </div>
+              </div>
+
+              <!-- Preview snippet -->
+              <div>
+                <div class="flex items-center justify-between text-[11px] text-stone-600 mb-1">
+                  <span>Extracted Text Snippet</span>
+                  <span id="charCount" class="font-mono text-[#8c4b1f]">0 chars</span>
+                </div>
+                <div id="extractedPreview" class="bg-[#f8f1e3] border border-[#b89b70] rounded-lg p-2.5 text-[11px] font-mono text-stone-700 max-h-24 overflow-y-auto custom-scrollbar leading-relaxed">No text extracted yet. Drop files above.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action Button on Left Page -->
+          <div class="pt-4 font-inter">
+            <button id="generateQuestionsBtn" disabled class="w-full py-3 bg-[#8c4b1f] hover:bg-[#733d19] disabled:opacity-40 disabled:cursor-not-allowed text-amber-100 font-semibold text-sm rounded-xl shadow transition flex items-center justify-center gap-2">
+              <i data-lucide="sparkles" class="w-4 h-4"></i> Generate Revision Set
+            </button>
+          </div>
+
+        </div>
+
+        <!-- ================= RIGHT PAGE: QUIZ & REVISION AREA ================= -->
+        <div class="book-page rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col relative overflow-hidden border border-[#dfcaaa]">
+          
+          <!-- STATE 1: LOCKED / WAITING PLACEHOLDER (Default before generation completes) -->
+          <div id="rightPlaceholder" class="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-5 my-auto">
+            
+            <div id="unsealIcon" class="w-20 h-20 wax-seal-bg rounded-full flex items-center justify-center text-amber-100 border-2 border-amber-300/40 shadow-xl">
+              <i data-lucide="lock" class="w-8 h-8"></i>
+            </div>
+
+            <div class="space-y-2 max-w-sm">
+              <h3 id="placeholderTitle" class="font-cinzel text-xl sm:text-2xl font-bold text-[#3d2618]">The Quiz Page Remains Sealed</h3>
+              <p id="placeholderDesc" class="text-xs text-stone-600 font-inter leading-relaxed">Upload study materials on the left page and press <strong class="text-[#8c4b1f]">Generate Revision Set</strong> to craft your custom practice exam.</p>
+            </div>
+
+            <!-- Live Generation Indicator inside Right Page (when active) -->
+            <div id="rightPageLoader" class="hidden w-full max-w-xs space-y-3 font-inter">
+              <div class="flex items-center justify-center gap-2 text-xs text-[#8c4b1f] font-semibold">
+                <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                <span id="aiProgressText">Consulting Gemini AI Model...</span>
+              </div>
+              <div class="w-full bg-[#d8c4a0] h-2 rounded-full overflow-hidden border border-[#b89b70]">
+                <div id="aiProgressBar" class="bg-[#8c4b1f] h-full w-0 transition-all duration-300"></div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- STATE 2: GENERATED QUIZ CONTAINER (Hidden until AI completes) -->
+          <div id="quizContainer" class="hidden flex-1 flex flex-col space-y-4">
+            
+            <!-- Quiz Toolbar -->
+            <div class="flex items-center justify-between border-b border-[#d8c4a0] pb-3 font-inter">
+              <div>
+                <span class="text-[10px] uppercase tracking-widest font-bold text-[#8c4b1f]">Right Page &bull; Practice Test</span>
+                <h2 id="quizTitleText" class="font-cinzel text-lg sm:text-xl font-bold text-[#3d2618]">Revision Test</h2>
+              </div>
+              
+              <div class="flex items-center gap-2">
+                <button id="toggleAnswersBtn" title="Reveal/Hide Rationales" class="p-1.5 sm:px-2.5 sm:py-1 bg-[#ebdcc1] hover:bg-[#dfcaaa] border border-[#b89b70] text-[#3d2618] rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                  <i data-lucide="eye" class="w-3.5 h-3.5 text-[#8c4b1f]"></i>
+                  <span class="hidden sm:inline">Answers</span>
+                </button>
+                <button id="printBtn" title="Print Worksheet" class="p-1.5 sm:px-2.5 sm:py-1 bg-[#8c4b1f] text-amber-100 hover:bg-[#733d19] rounded-lg text-xs font-semibold flex items-center gap-1 transition shadow">
+                  <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                  <span class="hidden sm:inline">Print</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Quiz Type Navigation Tabs -->
+            <div class="flex border-b border-[#d8c4a0] font-inter">
+              <button id="mcqTabBtn" class="px-4 py-2 border-b-2 border-[#8c4b1f] text-[#8c4b1f] font-bold text-xs flex items-center gap-1.5">
+                <i data-lucide="list-checks" class="w-4 h-4"></i> Multiple Choice (<span id="mcqTabBadge">0</span>)
+              </button>
+              <button id="longTabBtn" class="px-4 py-2 border-b-2 border-transparent text-stone-600 hover:text-[#3d2618] font-medium text-xs flex items-center gap-1.5">
+                <i data-lucide="file-text" class="w-4 h-4"></i> Long Questions (<span id="longTabBadge">0</span>)
+              </button>
+            </div>
+
+            <!-- MCQ Score Header -->
+            <div id="mcqScoreHeader" class="bg-[#ebdcc1] border border-[#b89b70] rounded-xl px-3 py-2 flex items-center justify-between font-inter text-xs">
+              <div class="flex items-center gap-2 text-[#3d2618]">
+                <i data-lucide="award" class="w-4 h-4 text-[#8c4b1f]"></i>
+                <span>Score Progress: <strong id="scoreText" class="text-[#8c4b1f]">0 / 0</strong></span>
+              </div>
+              <span id="languageIndicator" class="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded border border-amber-400">繁體中文 (Traditional Chinese)</span>
+            </div>
+
+            <!-- Scrollable Questions Area -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar pr-1 max-h-[460px]">
+              
+              <!-- MCQ Questions Container -->
+              <div id="mcqQuestionsList" class="space-y-4"></div>
+
+              <!-- Long Questions Container -->
+              <div id="longQuestionsList" class="hidden space-y-5"></div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer class="text-center py-3 text-[11px] font-inter text-amber-200/50">
+    The Revision Tome &bull; Powered by Gemini 3 AI API
+  </footer>
+
+  <script>
+    // Initialize PDF.js worker
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // Application State
+    const state = {
+      files: [], // { name, type, size, text }
+      extractedText: '',
+      detectedLanguage: 'en', // 'en' or 'zh-TW'
+      mcqs: [],
+      longQuestions: [],
+      userAnswers: {}, // { mcqIndex: optionIndex }
+      score: 0,
+      showAnswers: false
+    };
+
+    // DOM Elements
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const fileListContainer = document.getElementById('fileListContainer');
+    const fileList = document.getElementById('fileList');
+    const fileCount = document.getElementById('fileCount');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const parsingStatus = document.getElementById('parsingStatus');
+    const parsingMessage = document.getElementById('parsingMessage');
+    const parsingProgressBar = document.getElementById('parsingProgressBar');
+    const extractedPreview = document.getElementById('extractedPreview');
+    const charCount = document.getElementById('charCount');
+    const generateQuestionsBtn = document.getElementById('generateQuestionsBtn');
+    const docLangBadge = document.getElementById('docLangBadge');
+
+    const rightPlaceholder = document.getElementById('rightPlaceholder');
+    const unsealIcon = document.getElementById('unsealIcon');
+    const placeholderTitle = document.getElementById('placeholderTitle');
+    const placeholderDesc = document.getElementById('placeholderDesc');
+    const rightPageLoader = document.getElementById('rightPageLoader');
+    const aiProgressText = document.getElementById('aiProgressText');
+    const aiProgressBar = document.getElementById('aiProgressBar');
+
+    const quizContainer = document.getElementById('quizContainer');
+    const mcqTabBtn = document.getElementById('mcqTabBtn');
+    const longTabBtn = document.getElementById('longTabBtn');
+    const mcqTabBadge = document.getElementById('mcqTabBadge');
+    const longTabBadge = document.getElementById('longTabBadge');
+    const mcqQuestionsList = document.getElementById('mcqQuestionsList');
+    const longQuestionsList = document.getElementById('longQuestionsList');
+    const scoreText = document.getElementById('scoreText');
+    const languageIndicator = document.getElementById('languageIndicator');
+    const toggleAnswersBtn = document.getElementById('toggleAnswersBtn');
+    const printBtn = document.getElementById('printBtn');
+
+    // Init Lucide Icons
+    lucide.createIcons();
+
+    // ================= STREAMING_CHUNK:File Upload & Processing Handlers =================
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('border-[#8c4b1f]', 'bg-[#ebdcc1]');
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('border-[#8c4b1f]', 'bg-[#ebdcc1]');
+    });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-[#8c4b1f]', 'bg-[#ebdcc1]');
+      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFiles(e.target.files);
+    });
+
+    clearAllBtn.addEventListener('click', () => {
+      state.files = [];
+      state.extractedText = '';
+      updateFileListUI();
+    });
+
+    async function handleFiles(uploadedFiles) {
+      parsingStatus.classList.remove('hidden');
+      let completed = 0;
+      const total = uploadedFiles.length;
+
+      for (const file of uploadedFiles) {
+        parsingMessage.textContent = `Reading ${file.name}...`;
+        parsingProgressBar.style.width = `${Math.round((completed / total) * 100)}%`;
+
+        let text = '';
+        try {
+          const ext = file.name.split('.').pop().toLowerCase();
+          if (ext === 'pdf') {
+            text = await extractPdfText(file);
+          } else if (ext === 'pptx') {
+            text = await extractPptxText(file);
+          } else if (['png', 'jpg', 'jpeg'].includes(ext)) {
+            text = await extractImageOcrText(file);
+          }
+        } catch (err) {
+          console.error(`Error parsing ${file.name}:`, err);
+        }
+
+        if (text.trim().length > 0) {
+          state.files.push({
+            name: file.name,
+            size: (file.size / 1024).toFixed(1) + ' KB',
+            type: file.name.split('.').pop().toUpperCase(),
+            text: text
+          });
+        }
+        completed++;
+      }
+
+      parsingProgressBar.style.width = '100%';
+      setTimeout(() => {
+        parsingStatus.classList.add('hidden');
+        updateFileListUI();
+      }, 400);
+    }
+
+    function updateFileListUI() {
+      fileList.innerHTML = '';
+      if (state.files.length === 0) {
+        fileListContainer.classList.add('hidden');
+        generateQuestionsBtn.disabled = true;
+        extractedPreview.textContent = 'No text extracted yet. Drop files above.';
+        charCount.textContent = '0 chars';
+        state.extractedText = '';
+        docLangBadge.classList.add('hidden');
+        return;
+      }
+
+      fileListContainer.classList.remove('hidden');
+      fileCount.textContent = state.files.length;
+      generateQuestionsBtn.disabled = false;
+
+      state.files.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 bg-[#f8f1e3] border border-[#b89b70] rounded-lg text-xs font-inter';
+        item.innerHTML = `
+          <div class="flex items-center gap-2 overflow-hidden mr-2">
+            <span class="px-1.5 py-0.5 rounded bg-[#8c4b1f] text-amber-100 font-bold text-[10px]">${file.type}</span>
+            <span class="truncate font-medium text-[#3d2618]">${file.name}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-stone-500">${file.size}</span>
+            <button onclick="removeFile(${index})" class="text-rose-700 hover:text-rose-900 p-0.5"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+          </div>
+        `;
+        fileList.appendChild(item);
+      });
+
+      // Combine extracted text
+      state.extractedText = state.files.map(f => f.text).join('\n\n');
+      extractedPreview.textContent = state.extractedText.slice(0, 1500) + (state.extractedText.length > 1500 ? '...' : '');
+      charCount.textContent = `${state.extractedText.length.toLocaleString()} chars`;
+
+      // Language detection: test Chinese character frequency
+      const chineseCharMatch = state.extractedText.match(/[\u4e00-\u9fa5]/g);
+      const chineseRatio = chineseCharMatch ? (chineseCharMatch.length / state.extractedText.length) : 0;
+      
+      if (chineseRatio > 0.08) {
+        state.detectedLanguage = 'zh-TW';
+        docLangBadge.textContent = '繁體中文 (Traditional Chinese)';
+        docLangBadge.classList.remove('hidden');
+      } else {
+        state.detectedLanguage = 'en';
+        docLangBadge.textContent = 'English Document';
+        docLangBadge.classList.remove('hidden');
+      }
+
+      lucide.createIcons();
+    }
+
+    window.removeFile = function(index) {
+      state.files.splice(index, 1);
+      updateFileListUI();
+    };
+
+    // ================= STREAMING_CHUNK:Document Parsers (PDF, PPTX, OCR) =================
+    async function extractPdfText(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageStrings = content.items.map(item => item.str);
+        text += `\n--- Page ${i} ---\n` + pageStrings.join(' ');
+      }
+      return text;
+    }
+
+    async function extractPptxText(file) {
+      const zip = await JSZip.loadAsync(file);
+      let text = '';
+      let slideNum = 1;
+
+      // Iterate through zip entries for slide xml
+      const slideFiles = Object.keys(zip.files).filter(filename => filename.startsWith('ppt/slides/slide') && filename.endsWith('.xml'));
+      
+      // Sort slides numerically
+      slideFiles.sort((a, b) => {
+        const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
+        const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
+        return numA - numB;
+      });
+
+      for (const slideFile of slideFiles) {
+        const xmlText = await zip.files[slideFile].async('string');
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+        const textNodes = xmlDoc.getElementsByTagName('a:t');
+        
+        let slideText = [];
+        for (let i = 0; i < textNodes.length; i++) {
+          if (textNodes[i].textContent.trim()) {
+            slideText.push(textNodes[i].textContent.trim());
+          }
+        }
+        if (slideText.length > 0) {
+          text += `\n--- Slide ${slideNum} ---\n` + slideText.join('\n');
+          slideNum++;
+        }
+      }
+      return text;
+    }
+
+    async function extractImageOcrText(file) {
+      const worker = await Tesseract.createWorker('eng+chi_tra+chi_sim');
+      const ret = await worker.recognize(file);
+      await worker.terminate();
+      return ret.data.text;
+    }
+
+    // ================= STREAMING_CHUNK:Gemini API Question Generation Engine =================
+    generateQuestionsBtn.addEventListener('click', async () => {
+      if (!state.extractedText.trim()) return;
+
+      const mcqCount = parseInt(document.getElementById('mcqCount').value) || 6;
+      const longCount = parseInt(document.getElementById('longCount').value) || 3;
+
+      // Show loader on right page
+      unsealIcon.innerHTML = `<i data-lucide="loader-2" class="w-8 h-8 animate-spin"></i>`;
+      placeholderTitle.textContent = 'Gemini AI is Synthesizing Questions...';
+      placeholderDesc.textContent = 'Extracting core concepts, definitions, and essay prompts based strictly on your document language.';
+      rightPageLoader.classList.remove('hidden');
+      quizContainer.classList.add('hidden');
+      rightPlaceholder.classList.remove('hidden');
+      generateQuestionsBtn.disabled = true;
+
+      animateProgress(10, 85, 4500);
+
+      try {
+        const questionsData = await fetchQuestionsFromGemini(state.extractedText, mcqCount, longCount, state.detectedLanguage);
+        
+        state.mcqs = questionsData.mcqs || [];
+        state.longQuestions = questionsData.longQuestions || [];
+        state.userAnswers = {};
+        state.score = 0;
+
+        renderQuizUI();
+
+        // Reveal Quiz Container on Right Page
+        rightPlaceholder.classList.add('hidden');
+        quizContainer.classList.remove('hidden');
+
+      } catch (err) {
+        console.warn('Gemini API call returned an error, using NLP backup generator:', err);
+        // Fallback generator
+        const fallback = generateOfflineQuestions(state.extractedText, mcqCount, longCount, state.detectedLanguage);
+        state.mcqs = fallback.mcqs;
+        state.longQuestions = fallback.longQuestions;
+        state.userAnswers = {};
+        state.score = 0;
+
+        renderQuizUI();
+        rightPlaceholder.classList.add('hidden');
+        quizContainer.classList.remove('hidden');
+      } finally {
+        generateQuestionsBtn.disabled = false;
+        lucide.createIcons();
+      }
+    });
+
+    function animateProgress(start, end, duration) {
+      let current = start;
+      const step = (end - start) / (duration / 50);
+      const interval = setInterval(() => {
+        current += step;
+        if (current >= end) {
+          current = end;
+          clearInterval(interval);
+        }
+        aiProgressBar.style.width = `${Math.round(current)}%`;
+      }, 50);
+    }
+
+    // Gemini API Request Function with Exponential Backoff
+    async function fetchQuestionsFromGemini(sourceText, mcqCount, longCount, targetLang) {
+      const apiKey = ""; // Canvas runtime injects API key automatically for gemini-3-flash-preview
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const languageInstruction = targetLang === 'zh-TW' 
+        ? "STRICT LANGUAGE RULE: The user material is in Chinese. You MUST generate ALL questions, options, explanations, model answers, and rubrics strictly in TRADITIONAL CHINESE (繁體中文). Do NOT output English or Simplified Chinese."
+        : "STRICT LANGUAGE RULE: The user material is in English. You MUST generate ALL questions, options, explanations, model answers, and rubrics strictly in ENGLISH. Do NOT output Chinese.";
+
+      const systemPrompt = `You are a high-level educational exam generator. Your task is to analyze study notes and generate structured revision questions.
+${languageInstruction}
+
+Return JSON with exactly this structure:
+{
+  "mcqs": [
+    {
+      "question": "Question text here",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswerIndex": 0,
+      "explanation": "Detailed explanation here"
+    }
+  ],
+  "longQuestions": [
+    {
+      "question": "Essay question text here",
+      "contextOrReference": "Key concept reference",
+      "modelAnswer": "Comprehensive model response outline",
+      "rubricKeyPoints": ["Key Point 1", "Key Point 2", "Key Point 3"]
+    }
+  ]
+}`;
+
+      // Limit source text to avoid payload ceiling
+      const truncatedText = sourceText.slice(0, 25000);
+
+      const userQuery = `Study Content:\n"""\n${truncatedText}\n"""\n\nPlease generate exactly ${mcqCount} Multiple Choice Questions and ${longCount} Long/Essay Questions based on the study content.`;
+
+      const payload = {
+        contents: [{ parts: [{ text: userQuery }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              mcqs: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    question: { type: "STRING" },
+                    options: { type: "ARRAY", items: { type: "STRING" } },
+                    correctAnswerIndex: { type: "INTEGER" },
+                    explanation: { type: "STRING" }
+                  },
+                  required: ["question", "options", "correctAnswerIndex", "explanation"]
+                }
+              },
+              longQuestions: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    question: { type: "STRING" },
+                    contextOrReference: { type: "STRING" },
+                    modelAnswer: { type: "STRING" },
+                    rubricKeyPoints: { type: "ARRAY", items: { type: "STRING" } }
+                  },
+                  required: ["question", "contextOrReference", "modelAnswer", "rubricKeyPoints"]
+                }
+              }
+            },
+            required: ["mcqs", "longQuestions"]
+          }
+        }
+      };
+
+      // Exponential backoff
+      let retries = 3;
+      let delay = 1000;
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (jsonText) {
+              return JSON.parse(jsonText);
+            }
+          }
+        } catch (e) {
+          console.warn(`Retry attempt ${attempt + 1} failed:`, e);
+        }
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2;
+      }
+      throw new Error("Unable to fetch response from Gemini API");
+    }
+
+    // Backup Offline Synthesizer in case network is offline
+    function generateOfflineQuestions(text, mcqReqCount, longReqCount, targetLang) {
+      const isZh = targetLang === 'zh-TW';
+      const lines = text.split(/[\n;\.!?。！？]/).map(l => l.trim()).filter(l => l.length > 8);
+      
+      const mcqs = [];
+      const longQuestions = [];
+
+      for (let i = 0; i < mcqReqCount; i++) {
+        const line = lines[i % lines.length] || (isZh ? "這是關於學習筆記的核心概念。" : "Core concept from study notes.");
+        const qText = isZh 
+          ? `關於以下內容，下列哪項描述最為正確？「${line.slice(0, 45)}...」`
+          : `Which statement accurately reflects: "${line.slice(0, 45)}..."?`;
+
+        mcqs.push({
+          question: qText,
+          options: isZh ? [
+            `這強調了本章節的核心原則與概念。`,
+            `這表明該變數與結果呈反比關係。`,
+            `這屬於次要實驗觀察而非主要結論。`,
+            `這僅適用於特殊狀況下的極端例子。`
+          ] : [
+            `This highlights the core principle discussed in this section.`,
+            `This indicates an inverse correlation between the key variables.`,
+            `This represents a secondary observation rather than a conclusion.`,
+            `This applies only in specialized edge conditions.`
+          ],
+          correctAnswerIndex: 0,
+          explanation: isZh 
+            ? `正確答案是第一個選項。該片段直接總結了筆記中的關鍵要點。`
+            : `Option 1 is correct as it directly synthesizes the primary concept from your notes.`
+        });
+      }
+
+      for (let j = 0; j < longReqCount; j++) {
+        const line = lines[(j * 2) % lines.length] || (isZh ? "重點研習主題" : "Key study topic");
+        longQuestions.push({
+          question: isZh 
+            ? `請深入分析與「${line.slice(0, 30)}」相關的核心機制及其重要應用。`
+            : `Thoroughly analyze the mechanism and applications associated with: "${line.slice(0, 30)}".`,
+          contextOrReference: isZh ? `取材自研習文件重點` : `Extracted from uploaded study notes`,
+          modelAnswer: isZh 
+            ? `標準答案應涵蓋：1. 定義與基本原則；2. 具體運作機制；3. 在實際學科中的應用與影響。`
+            : `A complete answer should cover: 1. Core definition and foundation; 2. Operational mechanism; 3. Practical significance.`,
+          rubricKeyPoints: isZh ? [
+            `清晰列出基本定義`,
+            `解釋核心運作邏輯`,
+            `舉例說明實際應用`
+          ] : [
+            `Clear definition provided`,
+            `Explains core operational logic`,
+            `Includes practical application examples`
+          ]
+        });
+      }
+
+      return { mcqs, longQuestions };
+    }
+
+    // ================= STREAMING_CHUNK:Quiz UI Rendering & Interaction =================
+    function renderQuizUI() {
+      mcqTabBadge.textContent = state.mcqs.length;
+      longTabBadge.textContent = state.longQuestions.length;
+
+      languageIndicator.textContent = state.detectedLanguage === 'zh-TW' 
+        ? '繁體中文 (Traditional Chinese)' 
+        : 'English Questions';
+
+      renderMCQs();
+      renderLongQuestions();
+      updateScoreUI();
+    }
+
+    function renderMCQs() {
+      mcqQuestionsList.innerHTML = '';
+      if (state.mcqs.length === 0) {
+        mcqQuestionsList.innerHTML = `<p class="text-xs text-stone-500 font-inter">No multiple choice questions generated.</p>`;
+        return;
+      }
+
+      state.mcqs.forEach((mcq, qIdx) => {
+        const card = document.createElement('div');
+        card.className = 'card-parchment rounded-xl p-4 space-y-3 font-inter print-card';
+
+        const isAnswered = state.userAnswers[qIdx] !== undefined;
+        const selectedOpt = state.userAnswers[qIdx];
+
+        let optionsHtml = mcq.options.map((opt, optIdx) => {
+          let btnStyle = 'bg-[#f8f1e3] border-[#b89b70] text-[#3d2618] hover:bg-[#ebdcc1]';
+          let iconHtml = `<span class="w-5 h-5 rounded-full border border-[#b89b70] flex items-center justify-center text-[10px] font-bold">${String.fromCharCode(65 + optIdx)}</span>`;
+
+          if (isAnswered) {
+            if (optIdx === mcq.correctAnswerIndex) {
+              btnStyle = 'bg-emerald-100 border-emerald-600 text-emerald-950 font-semibold';
+              iconHtml = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-700"></i>`;
+            } else if (optIdx === selectedOpt) {
+              btnStyle = 'bg-rose-100 border-rose-500 text-rose-950';
+              iconHtml = `<i data-lucide="x-circle" class="w-4 h-4 text-rose-700"></i>`;
+            }
+          }
+
+          return `
+            <button onclick="selectMCQOption(${qIdx}, ${optIdx})" ${isAnswered ? 'disabled' : ''} class="w-full text-left px-3 py-2 rounded-lg border ${btnStyle} text-xs transition flex items-center gap-2.5">
+              ${iconHtml}
+              <span class="flex-1">${opt}</span>
+            </button>
+          `;
+        }).join('');
+
+        const showRationale = state.showAnswers || isAnswered;
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <h4 class="text-xs font-bold text-[#3d2618] flex items-start gap-1.5 leading-relaxed">
+              <span class="text-[#8c4b1f]">Q${qIdx + 1}.</span> ${mcq.question}
+            </h4>
+          </div>
+          <div class="space-y-1.5 pt-1">
+            ${optionsHtml}
+          </div>
+          ${showRationale ? `
+            <div class="mt-2 p-2.5 bg-[#f0e4cd] border border-[#d4be9a] rounded-lg text-[11px] text-stone-700 space-y-1">
+              <div class="font-bold text-[#8c4b1f] flex items-center gap-1">
+                <i data-lucide="info" class="w-3.5 h-3.5"></i> Rationale:
+              </div>
+              <p class="leading-relaxed">${mcq.explanation}</p>
+            </div>
+          ` : ''}
+        `;
+
+        mcqQuestionsList.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    window.selectMCQOption = function(qIdx, optIdx) {
+      state.userAnswers[qIdx] = optIdx;
+      if (optIdx === state.mcqs[qIdx].correctAnswerIndex) {
+        state.score++;
+      }
+      renderMCQs();
+      updateScoreUI();
+    };
+
+    function renderLongQuestions() {
+      longQuestionsList.innerHTML = '';
+      if (state.longQuestions.length === 0) {
+        longQuestionsList.innerHTML = `<p class="text-xs text-stone-500 font-inter">No long questions generated.</p>`;
+        return;
+      }
+
+      state.longQuestions.forEach((lq, lIdx) => {
+        const card = document.createElement('div');
+        card.className = 'card-parchment rounded-xl p-4 space-y-3 font-inter print-card';
+
+        const rubricItems = (lq.rubricKeyPoints || []).map(pt => `
+          <label class="flex items-start gap-2 text-[11px] text-stone-700 cursor-pointer">
+            <input type="checkbox" class="mt-0.5 rounded text-[#8c4b1f] focus:ring-0">
+            <span>${pt}</span>
+          </label>
+        `).join('');
+
+        card.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase text-[#8c4b1f]">Long Question ${lIdx + 1}</span>
+              <span class="text-[10px] text-stone-500">${lq.contextOrReference || ''}</span>
+            </div>
+            <h4 class="text-xs font-bold text-[#3d2618] leading-relaxed">${lq.question}</h4>
+          </div>
+
+          <!-- Answer Scratchpad -->
+          <div class="space-y-1 no-print">
+            <label class="text-[10px] font-bold text-stone-600">Your Response Scratchpad:</label>
+            <textarea rows="3" placeholder="Write down key bullet points for self-assessment..." class="w-full bg-[#f8f1e3] border border-[#b89b70] rounded-lg p-2 text-xs text-[#3d2618] focus:outline-none focus:border-[#8c4b1f] resize-y"></textarea>
+          </div>
+
+          <!-- Model Answer Toggle Section -->
+          <details class="group border-t border-[#d8c4a0] pt-2">
+            <summary class="text-xs font-bold text-[#8c4b1f] cursor-pointer hover:underline flex items-center justify-between">
+              <span>View Suggested Model Answer & Marking Rubric</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180"></i>
+            </summary>
+            
+            <div class="mt-2 space-y-2 text-xs">
+              <div class="p-2.5 bg-[#f0e4cd] border border-[#d4be9a] rounded-lg">
+                <strong class="text-[#3d2618] block mb-1">Model Outline:</strong>
+                <p class="text-[11px] text-stone-700 leading-relaxed whitespace-pre-wrap">${lq.modelAnswer}</p>
+              </div>
+
+              <div class="p-2.5 bg-[#f8f1e3] border border-[#b89b70] rounded-lg space-y-1.5">
+                <strong class="text-[#3d2618] block text-[11px]">Self-Assessment Rubric Checklist:</strong>
+                <div class="space-y-1">${rubricItems}</div>
+              </div>
+            </div>
+          </details>
+        `;
+
+        longQuestionsList.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    function updateScoreUI() {
+      const total = state.mcqs.length;
+      scoreText.textContent = `${state.score} / ${total}`;
+    }
+
+    // ================= STREAMING_CHUNK:Tab Navigation & Toolbar Controls =================
+    mcqTabBtn.addEventListener('click', () => {
+      mcqTabBtn.classList.add('border-[#8c4b1f]', 'text-[#8c4b1f]', 'font-bold');
+      mcqTabBtn.classList.remove('border-transparent', 'text-stone-600');
+      longTabBtn.classList.remove('border-[#8c4b1f]', 'text-[#8c4b1f]', 'font-bold');
+      longTabBtn.classList.add('border-transparent', 'text-stone-600');
+
+      mcqQuestionsList.classList.remove('hidden');
+      longQuestionsList.classList.add('hidden');
+    });
+
+    longTabBtn.addEventListener('click', () => {
+      longTabBtn.classList.add('border-[#8c4b1f]', 'text-[#8c4b1f]', 'font-bold');
+      longTabBtn.classList.remove('border-transparent', 'text-stone-600');
+      mcqTabBtn.classList.remove('border-[#8c4b1f]', 'text-[#8c4b1f]', 'font-bold');
+      mcqTabBtn.classList.add('border-transparent', 'text-stone-600');
+
+      longQuestionsList.classList.remove('hidden');
+      mcqQuestionsList.classList.add('hidden');
+    });
+
+    toggleAnswersBtn.addEventListener('click', () => {
+      state.showAnswers = !state.showAnswers;
+      renderMCQs();
+    });
+
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+  </script>
+</body>
+</html>
