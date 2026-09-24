@@ -1,5 +1,5 @@
 # 📖 The Revision Tome — AI Study Revision Generator
-
+## Online website : https://s250038-hub.github.io/The-Revision-Tome/
 **Smart Revision Tome** is an interactive, browser-based revision set generator that transforms study materials—including lecture slides, text documents, and photo notes—into custom practice examinations with multiple choice questions and long/essay answer rubrics.
 
 Built with an antique parchment aesthetic and powered by the **Google Gemini 3 Flash API**, it seamlessly handles multi-file parsing, auto-detects content languages (including Traditional Chinese and English), and provides offline fallback capabilities.
