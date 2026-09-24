@@ -43,6 +43,22 @@
       background: #2b180d;
       box-shadow: 0 35px 70px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.05);
       border: 3px solid #4a2d1a;
+      transition: all 0.3s ease;
+    }
+
+    /* Mobile 1:2 Aspect Ratio & Auto Viewport Zoom Fitting */
+    @media (max-width: 768px) {
+      .book-outer {
+        aspect-ratio: 1 / 2;
+        min-height: auto;
+        height: 100%;
+        max-height: calc(100vh - 5rem);
+        overflow-y: auto;
+      }
+      .book-page {
+        height: 100%;
+        overflow-y: auto;
+      }
     }
 
     .book-page {
@@ -193,15 +209,6 @@
                   <input type="number" id="longCount" min="1" max="10" value="3" class="w-full bg-[#f8f1e3] border border-[#b89b70] rounded-lg px-3 py-1.5 text-xs text-[#3d2618] focus:outline-none focus:border-[#8c4b1f]">
                 </div>
               </div>
-
-              <!-- Content Inspection Summary -->
-              <div>
-                <div class="flex items-center justify-between text-[11px] text-stone-600 mb-1">
-                  <span>File Inspection Payload</span>
-                  <span id="payloadMeta" class="font-mono text-[#8c4b1f]">0 MB</span>
-                </div>
-                <div id="extractedPreview" class="bg-[#f8f1e3] border border-[#b89b70] rounded-lg p-2.5 text-[11px] font-mono text-stone-700 max-h-24 overflow-y-auto custom-scrollbar leading-relaxed">No files loaded yet. Drop PDF, PPTX, or image notes above.</div>
-              </div>
             </div>
           </div>
 
@@ -334,8 +341,6 @@
     const parsingStatus = document.getElementById('parsingStatus');
     const parsingMessage = document.getElementById('parsingMessage');
     const parsingProgressBar = document.getElementById('parsingProgressBar');
-    const extractedPreview = document.getElementById('extractedPreview');
-    const payloadMeta = document.getElementById('payloadMeta');
     const generateQuestionsBtn = document.getElementById('generateQuestionsBtn');
     const docLangBadge = document.getElementById('docLangBadge');
 
@@ -459,8 +464,6 @@
       if (state.files.length === 0) {
         fileListContainer.classList.add('hidden');
         generateQuestionsBtn.disabled = true;
-        extractedPreview.textContent = 'No files loaded yet. Drop PDF, PPTX, or image notes above.';
-        payloadMeta.textContent = '0 MB';
         docLangBadge.classList.add('hidden');
         return;
       }
@@ -490,14 +493,6 @@
         `;
         fileList.appendChild(item);
       });
-
-      payloadMeta.textContent = `${(totalBytes / (1024 * 1024)).toFixed(2)} MB total`;
-      
-      if (combinedText.trim().length > 0) {
-        extractedPreview.textContent = combinedText.slice(0, 800) + (combinedText.length > 800 ? '...' : '');
-      } else {
-        extractedPreview.textContent = `Loaded ${state.files.length} document(s). Ready to send full visual & structural data to Gemini.`;
-      }
 
       // Language detection check on text content
       const chineseCharMatch = combinedText.match(/[\u4e00-\u9fa5]/g);
