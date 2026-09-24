@@ -1,9 +1,11 @@
 # 📖 The Revision Tome — Multimodal AI Study Generator
+[![Least version](https://img.shields.io/badge/demo-online-brightgreen.svg)](https://s250038-hub.github.io/The-Revision-Tome/)
 
 **The Revision Tome** is an interactive, browser-based revision set generator that transforms entire study documents—including lecture slides (`.pptx`), multi-page PDF documents (`.pdf`), and photo/handwritten notes (`.png`, `.jpg`, `.webp`)--into custom practice exams complete with Multiple Choice Questions and Long/Essay Question rubrics.
 
 Designed with an antique parchment aesthetic, it leverages the **Google Gemini 3 Flash Multimodal API** to process entire binary file payloads (diagrams, tables, formulas, and text layout) directly within a responsive two-page book interface.
 
+🚀 **Live Application:** [https://s250038-hub.github.io/The-Revision-Tome/](https://s250038-hub.github.io/The-Revision-Tome/)
 ## ✨ Core FeaturesQ
 
 * **👁️ Full Multimodal Document Processing**
